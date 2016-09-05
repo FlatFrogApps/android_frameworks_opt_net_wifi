@@ -54,6 +54,9 @@ final class WifiSettingsStore {
         mScanAlwaysAvailable = getPersistedScanAlwaysAvailable();
     }
 
+    synchronized void enableReadSavedStateAgain() {
+        mCheckSavedStateAtBoot = false;
+    }
     synchronized boolean isWifiToggleEnabled() {
         if (!mCheckSavedStateAtBoot) {
             mCheckSavedStateAtBoot = true;
@@ -64,6 +67,19 @@ final class WifiSettingsStore {
             return mPersistWifiState == WIFI_ENABLED_AIRPLANE_OVERRIDE;
         } else {
             return mPersistWifiState != WIFI_DISABLED;
+        }
+    }
+
+    synchronized boolean isWifiAPToggleEnabled() {
+        if (!mCheckSavedStateAtBoot) {
+            mCheckSavedStateAtBoot = true;
+        }
+
+        mAirplaneModeOn=isAirplaneModeOn();
+        if (mAirplaneModeOn) {
+            return getPersistedWifiApState() == WIFI_ENABLED_AIRPLANE_OVERRIDE;
+        } else {
+            return getPersistedWifiApState() != WIFI_DISABLED;
         }
     }
 
@@ -97,6 +113,22 @@ final class WifiSettingsStore {
             // wifi being disabled due to airplane mode being turned on
             // is handled handleAirplaneModeToggled()
             persistWifiState(WIFI_DISABLED);
+        }
+        return true;
+    }
+    synchronized boolean handleWifiApToggled(boolean wifiEnabled) {
+        if (wifiEnabled) {
+            if (mAirplaneModeOn) {
+                persistWifiApState(WIFI_ENABLED_AIRPLANE_OVERRIDE);
+            } else {
+                persistWifiApState(WIFI_ENABLED);
+            }
+        } else {
+            // When wifi state is disabled, we do not care
+            // if airplane mode is on or not. The scenario of
+            // wifi being disabled due to airplane mode being turned on
+            // is handled handleAirplaneModeToggled()
+            persistWifiApState(WIFI_DISABLED);
         }
         return true;
     }
@@ -136,6 +168,12 @@ final class WifiSettingsStore {
         final ContentResolver cr = mContext.getContentResolver();
         mPersistWifiState = state;
         Settings.Global.putInt(cr, Settings.Global.WIFI_ON, state);
+    }
+
+    private void persistWifiApState(int state) {
+        final ContentResolver cr = mContext.getContentResolver();
+        mPersistWifiState = state;
+        Settings.Global.putInt(cr, Settings.Global.WIFI_AP_ON, state);
     }
 
     /* Does Wi-Fi need to be disabled when airplane mode is on ? */
@@ -180,6 +218,15 @@ final class WifiSettingsStore {
             return Settings.Global.getInt(cr, Settings.Global.WIFI_ON);
         } catch (Settings.SettingNotFoundException e) {
             Settings.Global.putInt(cr, Settings.Global.WIFI_ON, WIFI_DISABLED);
+            return WIFI_DISABLED;
+        }
+    }
+    private int getPersistedWifiApState() {
+        final ContentResolver cr = mContext.getContentResolver();
+        try {
+            return Settings.Global.getInt(cr, Settings.Global.WIFI_AP_ON);
+        } catch (Settings.SettingNotFoundException e) {
+            Settings.Global.putInt(cr, Settings.Global.WIFI_AP_ON, WIFI_DISABLED);
             return WIFI_DISABLED;
         }
     }

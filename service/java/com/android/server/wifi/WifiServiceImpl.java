@@ -400,7 +400,17 @@ public final class WifiServiceImpl extends IWifiManager.Stub {
         mWifiWatchdogStateMachine = WifiWatchdogStateMachine.
                makeWifiWatchdogStateMachine(mContext, mWifiStateMachine.getMessenger());
     }
-
+    public void checkAndStartWifiorAP() {
+        mSettingsStore.enableReadSavedStateAgain();
+        boolean wifiApEnabled = mSettingsStore.isWifiAPToggleEnabled();
+        if (wifiApEnabled) {
+            Slog.i(TAG, "WifiApService starting up with Wi-Fi(AP) " +
+                (wifiApEnabled ? "enabled" : "disabled"));
+            setWifiApEnabled(null, true);
+            mWifiWatchdogStateMachine = WifiWatchdogStateMachine.
+            makeWifiWatchdogStateMachine(mContext, mWifiStateMachine.getMessenger());
+        }
+    }
     /**
      * see {@link android.net.wifi.WifiManager#pingSupplicant()}
      * @return {@code true} if the operation succeeds, {@code false} otherwise
@@ -646,6 +656,7 @@ public final class WifiServiceImpl extends IWifiManager.Stub {
         } else {
             Slog.e(TAG, "Invalid WifiConfiguration");
         }
+        mSettingsStore.handleWifiApToggled(enabled);
     }
 
     /**
