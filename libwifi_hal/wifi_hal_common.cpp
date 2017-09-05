@@ -19,12 +19,13 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 #include <android-base/logging.h>
 #include <cutils/misc.h>
 #include <cutils/properties.h>
 
-extern "C" int init_module(void *, unsigned long, const char *);
+#define finit_module(fd, opts, flags) syscall(SYS_finit_module, fd, opts, flags)
 extern "C" int delete_module(const char *, unsigned int);
 
 #ifndef WIFI_DRIVER_FW_PATH_STA
@@ -51,16 +52,15 @@ static const char MODULE_FILE[] = "/proc/modules";
 #endif
 
 static int insmod(const char *filename, const char *args) {
-  void *module;
-  unsigned int size;
+  int fd = 0;
   int ret;
 
-  module = load_file(filename, &size);
-  if (!module) return -1;
+  fd = open(filename, O_RDONLY);
+  if (fd < 0 ) return -1;
 
-  ret = init_module(module, size, args);
+  ret = finit_module(fd, args, 0);
 
-  free(module);
+  close(fd);
 
   return ret;
 }
