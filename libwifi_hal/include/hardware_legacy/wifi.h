@@ -29,6 +29,8 @@ extern "C"
  */
 int wifi_load_driver();
 
+const char *get_wifi_vendor_name();
+
 /**
  * Unload the Wi-Fi driver.
  *

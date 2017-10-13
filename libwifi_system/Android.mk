@@ -27,6 +27,10 @@ wifi_system_cflags := \
 
 # Device independent wifi system logic.
 # ============================================================
+
+ifeq ($(MULTI_WIFI_SUPPORT), true)
+wifi_system_cflags += -DMULTI_WIFI_SUPPORT
+endif
 include $(CLEAR_VARS)
 LOCAL_MODULE := libwifi-system
 LOCAL_CFLAGS := $(wifi_system_cflags)
@@ -35,6 +39,7 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 LOCAL_EXPORT_SHARED_LIBRARY_HEADERS := libbase
 LOCAL_SHARED_LIBRARIES := \
     libbase \
+    libwifi-hal-common \
     libcrypto \
     libcutils
 

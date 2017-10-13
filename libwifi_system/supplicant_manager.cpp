@@ -15,7 +15,7 @@
  */
 
 #include "wifi_system/supplicant_manager.h"
-
+#include "../libwifi_hal/include/hardware_legacy/wifi.h"
 #include <android-base/logging.h>
 #include <cutils/properties.h>
 #include <fcntl.h>
@@ -32,12 +32,12 @@ namespace android {
 namespace wifi_system {
 namespace {
 
-const char kSupplicantInitProperty[] = "init.svc.wpa_supplicant";
+char kSupplicantInitProperty[] = "init.svc.wpa_supplicant";
 const char kSupplicantConfigTemplatePath[] =
     "/etc/wifi/wpa_supplicant.conf";
 const char kSupplicantConfigFile[] = "/data/misc/wifi/wpa_supplicant.conf";
 const char kP2pConfigFile[] = "/data/misc/wifi/p2p_supplicant.conf";
-const char kSupplicantServiceName[] = "wpa_supplicant";
+char kSupplicantServiceName[] = "wpa_supplicant";
 constexpr mode_t kConfigFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
 const char kWiFiEntropyFile[] = "/data/misc/wifi/entropy.bin";
@@ -130,6 +130,14 @@ bool SupplicantManager::StartSupplicant() {
   int count = 200; /* wait at most 20 seconds for completion */
   const prop_info* pi;
   unsigned serial = 0;
+#ifdef MULTI_WIFI_SUPPORT
+  if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0) {
+    memset(kSupplicantInitProperty, 0, sizeof(kSupplicantInitProperty));
+    memset(kSupplicantServiceName, 0, sizeof(kSupplicantServiceName));
+    strcpy(kSupplicantInitProperty,"init.svc.rtl_supplicant");
+    strcpy(kSupplicantServiceName,"rtl_supplicant");
+  }
+#endif
 
   /* Check whether already running */
   if (property_get(kSupplicantInitProperty, supp_status, NULL) &&
@@ -197,7 +205,14 @@ bool SupplicantManager::StartSupplicant() {
 bool SupplicantManager::StopSupplicant() {
   char supp_status[PROPERTY_VALUE_MAX] = {'\0'};
   int count = 50; /* wait at most 5 seconds for completion */
-
+#ifdef MULTI_WIFI_SUPPORT
+  if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0) {
+    memset(kSupplicantInitProperty, 0, sizeof(kSupplicantInitProperty));
+    memset(kSupplicantServiceName, 0, sizeof(kSupplicantServiceName));
+    strcpy(kSupplicantInitProperty,"init.svc.rtl_supplicant");
+    strcpy(kSupplicantServiceName,"rtl_supplicant");
+  }
+#endif
   /* Check whether supplicant already stopped */
   if (property_get(kSupplicantInitProperty, supp_status, NULL) &&
       strcmp(supp_status, "stopped") == 0) {

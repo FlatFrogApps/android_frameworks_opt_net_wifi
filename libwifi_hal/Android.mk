@@ -60,6 +60,10 @@ ifdef WIFI_DRIVER_STATE_OFF
 wifi_hal_cflags += -DWIFI_DRIVER_STATE_OFF=\"$(WIFI_DRIVER_STATE_OFF)\"
 endif
 
+ifeq ($(MULTI_WIFI_SUPPORT), true)
+wifi_hal_cflags += -DMULTI_WIFI_SUPPORT
+endif
+
 # Common code shared between the HALs.
 # ============================================================
 include $(CLEAR_VARS)
@@ -67,10 +71,11 @@ LOCAL_MODULE := libwifi-hal-common
 LOCAL_VENDOR_MODULE := true
 LOCAL_CFLAGS := $(wifi_hal_cflags)
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
-LOCAL_SHARED_LIBRARIES := libbase
-LOCAL_HEADER_LIBRARIES := libcutils_headers
+LOCAL_SHARED_LIBRARIES := liblog libbase libcutils
+#LOCAL_HEADER_LIBRARIES := libcutils_headers
+LOCAL_STATIC_LIBRARIES := libusb
 LOCAL_SRC_FILES := wifi_hal_common.cpp
-include $(BUILD_STATIC_LIBRARY)
+include $(BUILD_SHARED_LIBRARY)
 
 # A fallback "vendor" HAL library.
 # Don't link this, link libwifi-hal.
@@ -99,6 +104,8 @@ else ifeq ($(BOARD_WLAN_DEVICE), mrvl)
 else ifeq ($(BOARD_WLAN_DEVICE), MediaTek)
   # support MTK WIFI HAL
   LIB_WIFI_HAL := libwifi-hal-mt66xx
+else ifeq ($(MULTI_WIFI_SUPPORT), true)
+  LIB_WIFI_HAL := libwifi-hal-multi
 endif
 
 # The WiFi HAL that you should be linking.
@@ -113,6 +120,7 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := \
 LOCAL_EXPORT_HEADER_LIBRARY_HEADERS := libhardware_legacy_headers
 LOCAL_HEADER_LIBRARIES := libhardware_legacy_headers
 LOCAL_SHARED_LIBRARIES := \
+    libwifi-hal-common \
     libbase \
     libcutils \
     liblog \
@@ -122,7 +130,7 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_SRC_FILES := \
     driver_tool.cpp \
     hal_tool.cpp
-LOCAL_WHOLE_STATIC_LIBRARIES := $(LIB_WIFI_HAL) libwifi-hal-common
+LOCAL_WHOLE_STATIC_LIBRARIES := $(LIB_WIFI_HAL)
 include $(BUILD_SHARED_LIBRARY)
 
 # Test utilities (e.g. mock classes) for libwifi-hal
