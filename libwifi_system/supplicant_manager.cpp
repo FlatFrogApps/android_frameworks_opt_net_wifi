@@ -15,7 +15,6 @@
  */
 
 #include "wifi_system/supplicant_manager.h"
-#include "../libwifi_hal/include/hardware_legacy/wifi.h"
 #include <android-base/logging.h>
 #include <cutils/properties.h>
 #include <fcntl.h>
@@ -27,6 +26,44 @@
 // of the property subsystem.
 #define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
 #include <sys/_system_properties.h>
+
+#ifdef MULTI_WIFI_SUPPORT
+#include <dlfcn.h>
+typedef const char * (*WIFI_GET_VENDOR_NAME) ();
+
+void* pHandle = NULL;
+void* init_multi_wifi_handle() {
+    if (NULL == pHandle) {
+        pHandle = dlopen("libwifi-hal-common-ext.so", RTLD_NOW);
+        if (NULL == pHandle) {
+            PLOG(ERROR) << "Unable to get multi wifi so";
+            return NULL;
+        }
+    }
+    return pHandle;
+}
+
+void release_multi_wifi_handle() {
+    if (NULL != pHandle) {
+        dlclose(pHandle);
+        pHandle = NULL;
+    }
+}
+
+const char *get_wifi_vendor_name() {
+    void* handle = init_multi_wifi_handle();
+    if (NULL != handle) {
+        WIFI_GET_VENDOR_NAME pfunc = (WIFI_GET_VENDOR_NAME)dlsym(handle, "_Z20get_wifi_vendor_namev");
+        if (NULL == pfunc) {
+            LOG(ERROR) << "Unable to get multi wifi get_wifi_vendor_name function";
+            return NULL;
+        }
+        return pfunc();
+    }
+
+    return NULL;
+}
+#endif
 
 namespace android {
 namespace wifi_system {
@@ -132,11 +169,10 @@ bool SupplicantManager::StartSupplicant() {
   unsigned serial = 0;
 #ifdef MULTI_WIFI_SUPPORT
   if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0) {
-    memset(kSupplicantInitProperty, 0, sizeof(kSupplicantInitProperty));
-    memset(kSupplicantServiceName, 0, sizeof(kSupplicantServiceName));
     strcpy(kSupplicantInitProperty,"init.svc.rtl_supplicant");
     strcpy(kSupplicantServiceName,"rtl_supplicant");
   }
+  release_multi_wifi_handle();
 #endif
 
   /* Check whether already running */
@@ -207,11 +243,10 @@ bool SupplicantManager::StopSupplicant() {
   int count = 50; /* wait at most 5 seconds for completion */
 #ifdef MULTI_WIFI_SUPPORT
   if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0) {
-    memset(kSupplicantInitProperty, 0, sizeof(kSupplicantInitProperty));
-    memset(kSupplicantServiceName, 0, sizeof(kSupplicantServiceName));
     strcpy(kSupplicantInitProperty,"init.svc.rtl_supplicant");
     strcpy(kSupplicantServiceName,"rtl_supplicant");
   }
+  release_multi_wifi_handle();
 #endif
   /* Check whether supplicant already stopped */
   if (property_get(kSupplicantInitProperty, supp_status, NULL) &&

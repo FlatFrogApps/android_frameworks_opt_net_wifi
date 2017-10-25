@@ -71,11 +71,10 @@ LOCAL_MODULE := libwifi-hal-common
 LOCAL_VENDOR_MODULE := true
 LOCAL_CFLAGS := $(wifi_hal_cflags)
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
-LOCAL_SHARED_LIBRARIES := liblog libbase libcutils
-#LOCAL_HEADER_LIBRARIES := libcutils_headers
-LOCAL_STATIC_LIBRARIES := libusb
+LOCAL_SHARED_LIBRARIES := libbase
+LOCAL_HEADER_LIBRARIES := libcutils_headers
 LOCAL_SRC_FILES := wifi_hal_common.cpp
-include $(BUILD_SHARED_LIBRARY)
+include $(BUILD_STATIC_LIBRARY)
 
 # A fallback "vendor" HAL library.
 # Don't link this, link libwifi-hal.
@@ -120,7 +119,6 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := \
 LOCAL_EXPORT_HEADER_LIBRARY_HEADERS := libhardware_legacy_headers
 LOCAL_HEADER_LIBRARIES := libhardware_legacy_headers
 LOCAL_SHARED_LIBRARIES := \
-    libwifi-hal-common \
     libbase \
     libcutils \
     liblog \
@@ -130,7 +128,7 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_SRC_FILES := \
     driver_tool.cpp \
     hal_tool.cpp
-LOCAL_WHOLE_STATIC_LIBRARIES := $(LIB_WIFI_HAL)
+LOCAL_WHOLE_STATIC_LIBRARIES := $(LIB_WIFI_HAL) libwifi-hal-common
 include $(BUILD_SHARED_LIBRARY)
 
 # Test utilities (e.g. mock classes) for libwifi-hal
