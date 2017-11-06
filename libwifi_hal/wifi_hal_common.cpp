@@ -77,8 +77,9 @@ int wifi_unload_driver_ext() {
             return -1;
         }
 
+        int ret = pfunc();
         release_multi_wifi_handle();
-        return pfunc();
+        return ret;
     }
 
     return -1;
