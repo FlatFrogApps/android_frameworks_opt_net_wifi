@@ -123,13 +123,6 @@ public class ApConfigUtil {
             return SUCCESS;
         }
 
-        /* Country code is mandatory for 5GHz band. */
-        if (config.apBand == WifiConfiguration.AP_BAND_5GHZ
-                && countryCode == null) {
-            Log.e(TAG, "5GHz band is not allowed without country code");
-            return ERROR_GENERIC;
-        }
-
         /* Select a channel if it is not specified. */
         if (config.apChannel == 0) {
             config.apChannel = chooseApChannel(
