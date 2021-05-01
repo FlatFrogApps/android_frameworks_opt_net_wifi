@@ -185,7 +185,6 @@ public class ClientModeImpl extends StateMachine {
     private static final String EXTRA_PASSPOINT_CONFIGURATION = "PasspointConfiguration";
     private static final int IPCLIENT_STARTUP_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes!
     private static final int IPCLIENT_SHUTDOWN_TIMEOUT_MS = 60_000; // 60 seconds
-
     private boolean mVerboseLoggingEnabled = false;
     private final WifiPermissionsWrapper mWifiPermissionsWrapper;
 
@@ -255,7 +254,7 @@ public class ClientModeImpl extends StateMachine {
     private int mLastSubId;
     private String mLastSimBasedConnectionCarrierName;
 
-    private boolean mIpReachabilityDisconnectEnabled = true;
+    private boolean mIpReachabilityDisconnectEnabled = false;
 
     private void processRssiThreshold(byte curRssi, int reason,
             WifiNative.WifiRssiEventHandler rssiHandler) {
@@ -5405,7 +5404,7 @@ public class ClientModeImpl extends StateMachine {
                                 // If this was not the last selected network, update network
                                 // selection status to temporarily disable the network.
                                 if (mWifiConfigManager.getLastSelectedNetwork() != config.networkId
-                                        && !config.noInternetAccessExpected) {
+                                        && !config.noInternetAccessExpected ) {
                                     Log.i(TAG, "Temporarily disabling network because of"
                                             + "no-internet access");
                                     mWifiConfigManager.updateNetworkSelectionStatus(

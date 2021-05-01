@@ -170,6 +170,7 @@ public class WifiConnectivityManager {
     private int mSingleScanRestartCount = 0;
     private int mTotalConnectivityAttemptsRateLimited = 0;
     private String mLastConnectionAttemptBssid = null;
+    private int mPeriodicSingleScanInterval = 5000;
     private long mLastPeriodicSingleScanTimeStamp = RESET_TIME_STAMP;
     private long mLastNetworkSelectionTimeStamp = RESET_TIME_STAMP;
     private boolean mPnoScanStarted = false;
@@ -1101,10 +1102,10 @@ public class WifiConnectivityManager {
         }
 
         long currentTimeStamp = mClock.getElapsedSinceBootMillis();
-
+       List<WifiConfiguration> savedNetworks = mConfigManager.getSavedNetworks(Process.WIFI_UID);
         if (mLastPeriodicSingleScanTimeStamp != RESET_TIME_STAMP) {
             long msSinceLastScan = currentTimeStamp - mLastPeriodicSingleScanTimeStamp;
-            if (msSinceLastScan < getScheduledSingleScanIntervalMs(0)) {
+            if (msSinceLastScan < getScheduledSingleScanIntervalMs(0) && !(savedNetworks.size() > 0 && mWifiState == WIFI_STATE_DISCONNECTED)) {
                 localLog("Last periodic single scan started " + msSinceLastScan
                         + "ms ago, defer this new scan request.");
                 schedulePeriodicScanTimer(
@@ -1165,11 +1166,16 @@ public class WifiConnectivityManager {
             }
 
             startSingleScan(isFullBandScan, WIFI_WORK_SOURCE);
+            if (savedNetworks.size() > 0 && mWifiState == WIFI_STATE_DISCONNECTED) {
+               mPeriodicSingleScanInterval= 5000;
+            schedulePeriodicScanTimer(mPeriodicSingleScanInterval);
+			} else {
             schedulePeriodicScanTimer(
                     getScheduledSingleScanIntervalMs(mCurrentSingleScanScheduleIndex));
 
             // Set up the next scan interval in an exponential backoff fashion.
             mCurrentSingleScanScheduleIndex++;
+			}
         } else {
             // Since we already skipped this scan, keep the same scan interval for next scan.
             schedulePeriodicScanTimer(
@@ -1295,7 +1301,7 @@ public class WifiConnectivityManager {
     // Start a periodic scan when screen is on
     private void startPeriodicScan(boolean scanImmediately) {
         mPnoScanListener.resetLowRssiNetworkRetryDelay();
-
+	List<WifiConfiguration> savedNetworks = mConfigManager.getSavedNetworks(Process.WIFI_UID);
         // No connectivity scan if auto roaming is disabled.
         if (mWifiState == WIFI_STATE_CONNECTED && !mContext.getResources().getBoolean(
                 R.bool.config_wifi_framework_enable_associated_network_selection)) {
