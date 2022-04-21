@@ -109,6 +109,7 @@ import java.io.BufferedReader;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Inet4Address;
@@ -2186,8 +2187,26 @@ public class WifiServiceImpl extends IWifiManager.Stub {
         if (mVerboseLoggingEnabled) {
             mLog.info("isDualBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
+        boolean isSupported = false;
+        File file = new File("/data/vendor/wifi/wid_fp");
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(file));
+            BufferedReader buffer = new BufferedReader(reader);
+            String tempString = null;
+            while ((tempString = reader.readLine()) != null) {
+                Log.d(TAG, "Get wifi chip name: " + tempString);
+                if (tempString.contains("bcm4359") || tempString.contains("bcm6255")
+                      || tempString.contains("bcm6356") || tempString.contains("bcm4358")) {
+                    isSupported = true;
+                }
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        return mContext.getResources().getBoolean(
+        return isSupported && mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_wifi_dual_band_support);
     }
 
