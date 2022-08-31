@@ -145,6 +145,7 @@ LOCAL_SHARED_LIBRARIES := \
     liblog \
     libnl \
     libutils \
+    librkwifi-ctrl \
     $(VENDOR_LOCAL_SHARED_LIBRARIES)
 LOCAL_SRC_FILES := \
     driver_tool.cpp \
