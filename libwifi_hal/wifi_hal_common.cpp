@@ -15,6 +15,7 @@
  */
 
 #include "hardware_legacy/wifi.h"
+#include "hardware_legacy/rk_wifi.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -28,6 +29,13 @@
 
 extern "C" int init_module(void *, unsigned long, const char *);
 extern "C" int delete_module(const char *, unsigned int);
+#define WIFI_MODULE_PATH                "/vendor/lib/modules/"
+#define MLAN_DRIVER_MODULE_PATH          WIFI_MODULE_PATH"mlan.ko"
+#define BCM_STATIC_BUF_MODULE_PATH	 WIFI_MODULE_PATH"dhd_static_buf.ko"
+#define AIC8800_BSP_DRIVER_MODULE_PATH   WIFI_MODULE_PATH"aic8800_bsp.ko"
+#define MVL_DRIVER_MODULE_NAME           "sd8xxx"
+#define BCM_DRIVER_MODULE_NAME           "bcmdhd"
+#define AIC8800_DRIVER_MODULE_NAME	 "aic8800_bsp"
 
 #ifndef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA NULL
@@ -44,18 +52,111 @@ extern "C" int delete_module(const char *, unsigned int);
 #endif
 
 static const char DRIVER_PROP_NAME[] = "wlan.driver.status";
-static bool is_driver_loaded = false;
+#ifndef WIFI_DRIVER_MODULE_PATH
+#define WIFI_DRIVER_MODULE_PATH		"/vendor/lib/modules/none"
+#endif
+#ifndef WIFI_DRIVER_MODULE_NAME
+#define WIFI_DRIVER_MODULE_NAME    "wlan"
+#endif
 #ifdef WIFI_DRIVER_MODULE_PATH
-static const char DRIVER_MODULE_NAME[] = WIFI_DRIVER_MODULE_NAME;
+//static const char DRIVER_MODULE_NAME[] = WIFI_DRIVER_MODULE_NAME;
 static const char DRIVER_MODULE_TAG[] = WIFI_DRIVER_MODULE_NAME " ";
-static const char DRIVER_MODULE_PATH[] = WIFI_DRIVER_MODULE_PATH;
-static const char DRIVER_MODULE_ARG[] = WIFI_DRIVER_MODULE_ARG;
+//static const char DRIVER_MODULE_PATH[] = WIFI_DRIVER_MODULE_PATH;
+//static const char DRIVER_MODULE_ARG[] = WIFI_DRIVER_MODULE_ARG;
 static const char MODULE_FILE[] = "/proc/modules";
 #endif
 
 #ifdef WIFI_DRIVER_STATE_CTRL_PARAM
 int kDriverStateAccessRetrySleepMillis = 200;
 #endif
+
+enum {
+    KERNEL_VERSION_UNKNOWN = 1,
+    KERNEL_VERSION_3_10,
+    KERNEL_VERSION_4_4,
+    KERNEL_VERSION_4_19,
+    KERNEL_VERSION_5_10,
+};
+
+static char wifi_type[64] = {0};
+extern "C" int check_wifi_chip_type_string(char *type);
+
+int get_kernel_version(void)
+{
+    int fd, version = 0;
+    char buf[64];
+
+    fd = open("/proc/version", O_RDONLY);
+    if (fd < 0) {
+        PLOG(ERROR) << "Can't open '/proc/version', errno = " << errno;
+        goto fderror;
+    }
+    memset(buf, 0, 64);
+    if( 0 == read(fd, buf, 64) ){
+        PLOG(ERROR) << "read '/proc/version' failed";
+        close(fd);
+        goto fderror;
+    }
+    close(fd);
+    if (strstr(buf, "Linux version 3.10") != NULL) {
+        version = KERNEL_VERSION_3_10;
+        PLOG(ERROR) << "Kernel version is 3.10.";
+    } else if (strstr(buf, "Linux version 4.4") != NULL) {
+	version = KERNEL_VERSION_4_4;
+	PLOG(ERROR) << "Kernel version is 4.4.";
+    } else if (strstr(buf, "Linux version 4.19") != NULL) {
+	version = KERNEL_VERSION_4_19;
+	PLOG(ERROR) << "Kernel version is 4.19.";
+    } else if (strstr(buf, "Linux version 5.10") != NULL) {
+	version = KERNEL_VERSION_5_10;
+	PLOG(ERROR) << "Kernel version is 5.10";
+    } else {
+        version = KERNEL_VERSION_UNKNOWN;
+        PLOG(ERROR) << "Kernel version unknown.";
+    }
+
+    return version;
+
+fderror:
+    return -1;
+}
+
+/* 0 - not ready; 1 - ready. */
+int check_wireless_ready(void)
+{
+	char line[1024];
+	FILE *fp = NULL;
+
+	if ((get_kernel_version() == KERNEL_VERSION_4_4)
+			|| (get_kernel_version() == KERNEL_VERSION_4_19)
+			|| (get_kernel_version() == KERNEL_VERSION_5_10)) {
+		fp = fopen("/proc/net/dev", "r");
+		if (fp == NULL) {
+			PLOG(ERROR) << "Couldn't open /proc/net/dev";
+			return 0;
+		}
+	} else {
+		fp = fopen("/proc/net/wireless", "r");
+		if (fp == NULL) {
+			PLOG(ERROR) << "Couldn't open /proc/net/wireless";
+			return 0;
+		}
+	}
+
+	while(fgets(line, 1024, fp)) {
+		if ((strstr(line, "wlan0:") != NULL) || (strstr(line, "p2p0:") != NULL)) {
+			PLOG(ERROR) << "Wifi driver is ready for now...";
+			property_set(DRIVER_PROP_NAME, "ok");
+			fclose(fp);
+			return 1;
+		}
+	}
+
+	fclose(fp);
+
+	PLOG(ERROR) << "Wifi driver is not ready.";
+	return 0;
+}
 
 static int insmod(const char *filename, const char *args) {
   int ret;
@@ -131,21 +232,16 @@ int wifi_change_driver_state(const char *state) {
 #endif
 
 int is_wifi_driver_loaded() {
-  char driver_status[PROPERTY_VALUE_MAX];
 #ifdef WIFI_DRIVER_MODULE_PATH
   FILE *proc;
   char line[sizeof(DRIVER_MODULE_TAG) + 10];
 #endif
-
+#if 0
   if (!property_get(DRIVER_PROP_NAME, driver_status, NULL)) {
     return 0; /* driver not loaded */
   }
-
-  if (!is_driver_loaded) {
-    return 0;
-  } /* driver not loaded */
-
-#ifdef WIFI_DRIVER_MODULE_PATH
+#endif
+if (check_wireless_ready() == 0) {
   /*
    * If the property says the driver is loaded, check to
    * make sure that the property setting isn't just left
@@ -154,10 +250,7 @@ int is_wifi_driver_loaded() {
    */
   if ((proc = fopen(MODULE_FILE, "r")) == NULL) {
     PLOG(WARNING) << "Could not open " << MODULE_FILE;
-    is_driver_loaded = false;
-    if (strcmp(driver_status, "unloaded") != 0) {
-      property_set(DRIVER_PROP_NAME, "unloaded");
-    }
+    property_set(DRIVER_PROP_NAME, "unloaded");
     return 0;
   }
   while ((fgets(line, sizeof(line), proc)) != NULL) {
@@ -167,23 +260,42 @@ int is_wifi_driver_loaded() {
     }
   }
   fclose(proc);
-  is_driver_loaded = false;
-  if (strcmp(driver_status, "unloaded") != 0) {
-    property_set(DRIVER_PROP_NAME, "unloaded");
-  }
+  property_set(DRIVER_PROP_NAME, "unloaded");
   return 0;
-#else
+} else {
   return 1;
-#endif
+}
 }
 
 int wifi_load_driver() {
 #ifdef WIFI_DRIVER_MODULE_PATH
-  if (is_wifi_driver_loaded()) {
-    return 0;
-  }
+	const char* wifi_ko_path = get_wifi_module_path();
+	const char* wifi_ko_arg = get_wifi_module_arg();
+	int count = 100;
+	if (is_wifi_driver_loaded()) {
+		return 0;
+	}
+	if (wifi_ko_path == NULL) {
+		PLOG(ERROR) << "falied to find wifi driver for type=" << wifi_type;
+		return -1;
+	}
 
-  if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) return -1;
+	if (strstr(wifi_ko_path, MVL_DRIVER_MODULE_NAME)) {
+		insmod(MLAN_DRIVER_MODULE_PATH, "");
+	}
+
+	if (strstr(wifi_ko_path, BCM_DRIVER_MODULE_NAME)) {
+		insmod(BCM_STATIC_BUF_MODULE_PATH, "");
+	}
+
+	if (strstr(wifi_ko_path, AIC8800_DRIVER_MODULE_NAME)) {
+		insmod(AIC8800_BSP_DRIVER_MODULE_PATH, "");
+		usleep(200000);
+	}
+
+  if (insmod(wifi_ko_path, wifi_ko_arg) < 0) {
+	  return -1;
+  }
 #endif
 
 #ifdef WIFI_DRIVER_STATE_CTRL_PARAM
@@ -191,30 +303,30 @@ int wifi_load_driver() {
     return 0;
   }
 
-  if (wifi_change_driver_state(WIFI_DRIVER_STATE_ON) < 0) {
-#ifdef WIFI_DRIVER_MODULE_PATH
-    PLOG(WARNING) << "Driver unloading, err='fail to change driver state'";
-    if (rmmod(DRIVER_MODULE_NAME) == 0) {
-      PLOG(DEBUG) << "Driver unloaded";
-    } else {
-      // Set driver prop to "ok", expect HL to restart Wi-Fi.
-      PLOG(DEBUG) << "Driver unload failed! set driver prop to 'ok'.";
-      property_set(DRIVER_PROP_NAME, "ok");
-    }
+  if (wifi_change_driver_state(WIFI_DRIVER_STATE_ON) < 0) return -1;
 #endif
-    return -1;
+  while (count-- > 0) {
+	  if (is_wifi_driver_loaded()) {
+		property_set(DRIVER_PROP_NAME, "ok");
+		return 0;
+	  }
+	  usleep(200000);
   }
-#endif
-  is_driver_loaded = true;
-  return 0;
+  property_set(DRIVER_PROP_NAME, "timeout");
+  return -1;
 }
 
 int wifi_unload_driver() {
+#if 0
   if (!is_wifi_driver_loaded()) {
+    property_set(DRIVER_PROP_NAME, "unloaded");
     return 0;
   }
+
+  usleep(200000); /* allow to finish interface down */
 #ifdef WIFI_DRIVER_MODULE_PATH
-  if (rmmod(DRIVER_MODULE_NAME) == 0) {
+  const char* wifi_ko_name = get_wifi_driver_name();
+  if (rmmod(wifi_ko_name) == 0) {
     int count = 20; /* wait at most 10 seconds for completion */
     while (count-- > 0) {
       if (!is_wifi_driver_loaded()) break;
@@ -233,10 +345,12 @@ int wifi_unload_driver() {
     if (wifi_change_driver_state(WIFI_DRIVER_STATE_OFF) < 0) return -1;
   }
 #endif
-  is_driver_loaded = false;
   property_set(DRIVER_PROP_NAME, "unloaded");
   return 0;
 #endif
+#endif
+  property_set(DRIVER_PROP_NAME, "unloaded");
+  return 0;
 }
 
 const char *wifi_get_fw_path(int fw_type) {
@@ -256,6 +370,9 @@ int wifi_change_fw_path(const char *fwpath) {
   int fd;
   int ret = 0;
 
+  if (wifi_type[0] == 0)
+	check_wifi_chip_type_string(wifi_type);
+  if (0 != strncmp(wifi_type, "AP", 2)) return ret;
   if (!fwpath) return ret;
   fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
   if (fd < 0) {
