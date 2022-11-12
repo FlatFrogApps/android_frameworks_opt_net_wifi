@@ -92,7 +92,7 @@ int get_kernel_version(void)
         goto fderror;
     }
     memset(buf, 0, 64);
-    if( 0 == read(fd, buf, 64) ){
+    if( 0 == read(fd, buf, 63) ){
         PLOG(ERROR) << "read '/proc/version' failed";
         close(fd);
         goto fderror;
