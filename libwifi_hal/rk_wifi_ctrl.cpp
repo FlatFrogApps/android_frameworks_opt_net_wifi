@@ -148,7 +148,8 @@ static wifi_device supported_wifi_devices[] = {
 	{"MVL88W8977",	"02df:9145"},
 	{"SPRDWL",	"0000:0000"},
 	{"BES2600",	"be57:2002"},
-	{"AIC8800",	"5549:0145"},
+	{"AIC8800",	"5449:0145"},
+	{"AIC8800",     "c8a1:0082"},
 
 };
 
