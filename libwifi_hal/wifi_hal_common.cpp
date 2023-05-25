@@ -35,7 +35,7 @@ extern "C" int delete_module(const char *, unsigned int);
 #define AIC8800_BSP_DRIVER_MODULE_PATH   WIFI_MODULE_PATH"aic8800_bsp.ko"
 #define MVL_DRIVER_MODULE_NAME           "sd8xxx"
 #define BCM_DRIVER_MODULE_NAME           "bcmdhd"
-#define AIC8800_DRIVER_MODULE_NAME	 "aic8800_bsp"
+#define AIC8800_DRIVER_MODULE_NAME	 "aic8800"
 
 #ifndef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA NULL
