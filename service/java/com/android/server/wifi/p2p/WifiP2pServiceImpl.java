@@ -3246,7 +3246,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void notifyInvitationReceived() {
-            Resources r = mContext.getResources();
+            // FIXME: Add custom UI.
+            logd(getName() + " auto-accept invitation.");
+            sendMessage(PEER_CONNECTION_USER_ACCEPT);
+/*            Resources r = mContext.getResources();
             final WpsInfo wps = mSavedPeerConfig.wps;
             final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
                     .inflate(R.layout.wifi_p2p_dialog, null);
@@ -3325,7 +3328,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
             dialog.getWindow().addSystemFlags(
                     WindowManager.LayoutParams.SYSTEM_FLAG_SHOW_FOR_ALL_USERS);
-            dialog.show();
+            dialog.show();*/
         }
 
         /**
