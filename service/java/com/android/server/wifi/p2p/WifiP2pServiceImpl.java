@@ -244,6 +244,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     public static final int ENABLED                         = 1;
     public static final int DISABLED                        = 0;
 
+    public static final String WIFI_P2P_INVITATION_RECEIVED_FLATFROG = "android.net.wifi.p2p.WIFI_P2P_INVITATION_RECEIVED_FLATFROG";
+    public static final String WIFI_P2P_INVITATION_ACCEPTED_FLATFROG = "android.net.wifi.p2p.WIFI_P2P_INVITATION_ACCEPTED_FLATFROG";
+    public static final String WIFI_P2P_INVITATION_REJECTED_FLATFROG = "android.net.wifi.p2p.WIFI_P2P_INVITATION_REJECTED_FLATFROG";
+
     private final boolean mP2pSupported;
 
     private final WifiP2pDevice mThisDevice = new WifiP2pDevice();
@@ -887,6 +891,20 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                     }
                 }, new IntentFilter(TetheringManager.ACTION_TETHER_STATE_CHANGED));
+                mContext.registerReceiver(new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        logd(getName() + " accepting invitation after receiving custom intent.");
+                        sendMessage(PEER_CONNECTION_USER_ACCEPT);
+                    }
+                }, new IntentFilter(WIFI_P2P_INVITATION_ACCEPTED_FLATFROG));
+                mContext.registerReceiver(new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        logd(getName() + " rejecting invitation after receiving custom intent.");
+                        sendMessage(PEER_CONNECTION_USER_REJECT);
+                    }
+                }, new IntentFilter(WIFI_P2P_INVITATION_REJECTED_FLATFROG));
                 // Register for interface availability from HalDeviceManager
                 mWifiNative.registerInterfaceAvailableListener((boolean isAvailable) -> {
                     mIsHalInterfaceAvailable = isAvailable;
@@ -3246,9 +3264,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void notifyInvitationReceived() {
-            // FIXME: Add custom UI.
-            logd(getName() + " auto-accept invitation.");
-            sendMessage(PEER_CONNECTION_USER_ACCEPT);
+            logd(getName() + " sending custom intent after receiving invitation.");
+            sendBroadcastMultiplePermissions(
+                    new Intent(WIFI_P2P_INVITATION_RECEIVED_FLATFROG)
+                            .addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY));
+
 /*            Resources r = mContext.getResources();
             final WpsInfo wps = mSavedPeerConfig.wps;
             final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
