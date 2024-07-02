@@ -77,7 +77,8 @@ public class WifiHealthMonitor {
             "WifiHealthMonitor Schedule Post-Boot Detection Timer";
     // Package name of WiFi mainline module found from the following adb command
     // adb shell pm list packages --apex-only| grep wifi
-    private static final String WIFI_APEX_NAME = "com.android.wifi";
+    // FF note: This does not yield any result, and throws an exception in the post-boot check. The APK name seems to be as below.
+    private static final String WIFI_APK_NAME = "com.android.wifi.resources";
     private static final String SYSTEM_INFO_DATA_NAME = "systemInfoData";
     // The time that device waits after device boot before triggering post-boot detection.
     // This needs be long enough so that memory read can complete before post-boot detection.
@@ -333,13 +334,8 @@ public class WifiHealthMonitor {
         PackageManager packageManager = mContext.getPackageManager();
         long wifiStackVersion = 0;
         try {
-            ModuleInfo wifiModule = packageManager.getModuleInfo(
-                    WIFI_APEX_NAME, PackageManager.MODULE_APEX_NAME);
-            String wifiPackageName = wifiModule.getPackageName();
-            if (wifiPackageName != null) {
-                wifiStackVersion = packageManager.getPackageInfo(
-                        wifiPackageName, PackageManager.MATCH_APEX).getLongVersionCode();
-            }
+            wifiStackVersion = packageManager.getPackageInfo(
+                    WIFI_APK_NAME, PackageManager.MATCH_APEX).getLongVersionCode();
         } catch (PackageManager.NameNotFoundException e) {
             Log.e(TAG, " Hit PackageManager exception", e);
         }
