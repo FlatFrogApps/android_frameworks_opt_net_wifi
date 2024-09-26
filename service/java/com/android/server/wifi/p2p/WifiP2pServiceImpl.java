@@ -3839,7 +3839,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             mWifiNative.setP2pDeviceType(mThisDevice.primaryDeviceType);
             // Supplicant defaults to using virtual display with display
             // which refers to a remote display. Use physical_display
-            mWifiNative.setConfigMethods("virtual_push_button physical_display keypad");
+            mWifiNative.setConfigMethods("virtual_push_button");
 
             mThisDevice.deviceAddress = mWifiNative.p2pGetDeviceAddress();
             updateThisDevice(WifiP2pDevice.AVAILABLE);
