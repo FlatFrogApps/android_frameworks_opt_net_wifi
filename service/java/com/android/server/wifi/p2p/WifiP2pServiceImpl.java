@@ -3800,7 +3800,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
 
             mThisDevice.deviceName = devName;
-            mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceName);
+            mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceAddress.replace(":", ""));
 
             mSettingsConfigStore.put(WIFI_P2P_DEVICE_NAME, devName);
             sendThisDeviceChangedBroadcast();
@@ -3834,14 +3834,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     R.string.config_wifi_p2p_device_type);
 
             mWifiNative.setP2pDeviceName(mThisDevice.deviceName);
-            // DIRECT-XY-DEVICENAME (XY is randomly generated)
-            mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceName);
             mWifiNative.setP2pDeviceType(mThisDevice.primaryDeviceType);
             // Supplicant defaults to using virtual display with display
             // which refers to a remote display. Use physical_display
             mWifiNative.setConfigMethods("virtual_push_button");
 
             mThisDevice.deviceAddress = mWifiNative.p2pGetDeviceAddress();
+            // DIRECT-XY-DEVICENAME (XY is randomly generated)
+            mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceAddress.replace(":", ""));
             updateThisDevice(WifiP2pDevice.AVAILABLE);
             if (mVerboseLoggingEnabled) logd("DeviceAddress: " + mThisDevice.deviceAddress);
             mWifiNative.p2pFlush();
